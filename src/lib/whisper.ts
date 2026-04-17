@@ -166,7 +166,7 @@ export async function transcribe(opts: TranscribeOptions): Promise<Segment[]> {
     const timeoutMs = 30 * 60 * 1000;
     const check = () => {
       const last = printBuffer[printBuffer.length - 1] || "";
-      const done = printBuffer.some((l) => l.includes("whisper_print_timings:    total time"));
+      const done = printBuffer.some((l) => /whisper_print_timings:.*total time/.test(l));
       if (done) return resolve();
       if (Date.now() - start > timeoutMs) return reject(new Error("Transcription timed out"));
       setTimeout(check, 200);
