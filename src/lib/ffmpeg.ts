@@ -11,9 +11,11 @@ export async function getFFmpeg(onLog?: (msg: string) => void): Promise<FFmpeg> 
   loadPromise = (async () => {
     const inst = new FFmpeg();
     if (onLog) inst.on("log", ({ message }) => onLog(message));
+    // Use absolute URLs so the worker (which has its own base) resolves them correctly.
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
     await inst.load({
-      coreURL: "/wasm/ffmpeg/ffmpeg-core.js",
-      wasmURL: "/wasm/ffmpeg/ffmpeg-core.wasm",
+      coreURL: `${origin}/wasm/ffmpeg/ffmpeg-core.js`,
+      wasmURL: `${origin}/wasm/ffmpeg/ffmpeg-core.wasm`,
     });
     ffmpeg = inst;
     return inst;
