@@ -4,9 +4,10 @@ import { ArrowRight, Cpu, Lock, Scissors, ShieldCheck, Zap } from "lucide-react"
 import { FileDrop } from "@/components/FileDrop";
 import { StageProgress } from "@/components/StageProgress";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { TranscriptEditor } from "@/components/TranscriptEditor";
 import { extractAudio16kMono, cutAndConcat, getFFmpeg } from "@/lib/ffmpeg";
-import { loadModel, transcribe, loadWhisper, type Segment } from "@/lib/whisper";
+import { loadModel, transcribe, loadWhisper, type Segment, type TranscriptionMode } from "@/lib/whisper";
 import { segmentsToTokens, tokensToKeepRanges, type Token } from "@/lib/transcript";
 import { toast } from "sonner";
 
@@ -28,6 +29,10 @@ export default function Index() {
   const [duration, setDuration] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const [transcriptionMode, setTranscriptionMode] = useState<TranscriptionMode>(() => {
+    const saved = window.localStorage.getItem("speakcut-transcription-mode");
+    return saved === "precise" ? "precise" : "fast";
+  });
 
   const objectUrlRef = useRef<string | null>(null);
 
@@ -36,6 +41,10 @@ export default function Index() {
       if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("speakcut-transcription-mode", transcriptionMode);
+  }, [transcriptionMode]);
 
   const reset = useCallback(() => {
     if (objectUrlRef.current) {
@@ -82,6 +91,7 @@ export default function Index() {
       const segments: Segment[] = await transcribe({
         audio: pcm,
         lang: "en",
+        mode: transcriptionMode,
         onProgressLine: (line) => {
           if (line.startsWith("whisper_") || line.startsWith("system_")) return;
           if (line.trim().length === 0) return;
@@ -141,9 +151,12 @@ export default function Index() {
 
       <div className="container max-w-7xl flex-1 py-6 md:py-10">
         {stage.kind === "idle" && !file && <Hero onFile={handleFile} />}
+        {stage.kind === "idle" && !file && (
+          <TranscriptionModePicker mode={transcriptionMode} onModeChange={setTranscriptionMode} />
+        )}
 
         {stage.kind !== "idle" && stage.kind !== "ready" && (
-          <ProcessingPanel stage={stage} fileName={file?.name} onCancel={reset} />
+          <ProcessingPanel stage={stage} fileName={file?.name} onCancel={reset} mode={transcriptionMode} />
         )}
 
         {stage.kind === "ready" && file && videoUrl && (
@@ -170,6 +183,40 @@ export default function Index() {
 
       <Footer />
     </main>
+  );
+}
+
+function TranscriptionModePicker({
+  mode,
+  onModeChange,
+}: {
+  mode: TranscriptionMode;
+  onModeChange: (mode: TranscriptionMode) => void;
+}) {
+  return (
+    <div className="mx-auto mb-6 flex w-full max-w-2xl flex-col gap-3 rounded-[24px] border border-border/70 bg-panel/75 p-4 shadow-[var(--shadow-elev)] backdrop-blur-xl md:flex-row md:items-center md:justify-between">
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-foreground">Transcription mode</p>
+        <p className="text-sm text-muted-foreground">
+          Fast is quicker for most clips. Precise uses stricter Whisper timing for finer word splits.
+        </p>
+      </div>
+      <ToggleGroup
+        type="single"
+        value={mode}
+        onValueChange={(value) => {
+          if (value === "fast" || value === "precise") onModeChange(value);
+        }}
+        className="justify-start rounded-full border border-border/70 bg-card/70 p-1"
+      >
+        <ToggleGroupItem value="fast" className="rounded-full px-4 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+          Fast
+        </ToggleGroupItem>
+        <ToggleGroupItem value="precise" className="rounded-full px-4 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+          Precise
+        </ToggleGroupItem>
+      </ToggleGroup>
+    </div>
   );
 }
 
@@ -297,10 +344,12 @@ function ProcessingPanel({
   stage,
   fileName,
   onCancel,
+  mode,
 }: {
   stage: Exclude<Stage, { kind: "idle" } | { kind: "ready" }>;
   fileName?: string;
   onCancel: () => void;
+  mode: TranscriptionMode;
 }) {
   const { label, detail, progress } = useMemo(() => {
     switch (stage.kind) {
@@ -326,6 +375,9 @@ function ProcessingPanel({
         {fileName && (
           <p className="truncate font-mono text-sm text-muted-foreground">{fileName}</p>
         )}
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          {mode === "fast" ? "Fast mode" : "Precise mode"}
+        </p>
       </div>
       <StageProgress label={label} detail={detail} progress={progress} />
       <div className="text-center">
