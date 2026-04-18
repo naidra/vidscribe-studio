@@ -49,6 +49,10 @@ export async function loadWhisper(): Promise<WhisperModule> {
   if (modulePromise) return modulePromise;
 
   modulePromise = (async () => {
+    if (typeof window !== "undefined" && !window.crossOriginIsolated) {
+      throw new Error("This Whisper WASM build requires cross-origin isolation. Reload the app after the dev server sends COOP/COEP headers.");
+    }
+
     // Pre-configure the global Module object that libmain.js looks for.
     (window as any).Module = {
       print: (text: string) => emitLine(text),
