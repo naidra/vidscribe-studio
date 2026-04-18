@@ -12,10 +12,14 @@ export async function getFFmpeg(onLog?: (msg: string) => void): Promise<FFmpeg> 
     const inst = new FFmpeg();
     if (onLog) inst.on("log", ({ message }) => onLog(message));
     // Use absolute URLs so the worker (which has its own base) resolves them correctly.
+    // We pass `classWorkerURL` pointing at our own vendored worker in /public/ to
+    // bypass Vite's dep-pre-bundling of the package's internal worker.js (which
+    // 404s as /node_modules/.vite/deps/worker.js in dev).
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     await inst.load({
       coreURL: `${origin}/wasm/ffmpeg/ffmpeg-core.js`,
       wasmURL: `${origin}/wasm/ffmpeg/ffmpeg-core.wasm`,
+      classWorkerURL: `${origin}/wasm/ffmpeg/worker.js`,
     });
     ffmpeg = inst;
     return inst;
