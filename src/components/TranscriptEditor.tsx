@@ -32,7 +32,7 @@ export function TranscriptEditor({
   const transcriptRef = useRef<HTMLDivElement>(null);
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [previewMode, setPreviewMode] = useState(false);
+  const [previewMode, setPreviewMode] = useState(true);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
 
   const keepRanges = useMemo(
@@ -49,35 +49,42 @@ export function TranscriptEditor({
     const onT = () => setTime(v.currentTime);
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
+    const onLoadedMetadata = () => {
+      setTime(v.currentTime);
+    };
     v.addEventListener("timeupdate", onT);
     v.addEventListener("play", onPlay);
     v.addEventListener("pause", onPause);
+    v.addEventListener("loadedmetadata", onLoadedMetadata);
+    v.load();
     return () => {
       v.removeEventListener("timeupdate", onT);
       v.removeEventListener("play", onPlay);
       v.removeEventListener("pause", onPause);
+      v.removeEventListener("loadedmetadata", onLoadedMetadata);
     };
   }, [videoUrl]);
 
   // Preview mode: when playing, skip over deleted regions
   useEffect(() => {
-    if (!previewMode) return;
+    if (!previewMode || !playing) return;
     const v = videoRef.current;
     if (!v) return;
     const tick = () => {
       const t = v.currentTime;
-      // Find current token at time t
-      const token = tokens.find((tok) => t >= tok.start && t < tok.end);
-      if (token?.deleted) {
-        // Jump to next non-deleted token's start
-        const next = tokens.find((tok) => tok.start >= t && !tok.deleted);
-        if (next) v.currentTime = next.start;
-        else v.pause();
+      const currentKeepRange = keepRanges.find((range) => t >= range.start && t < range.end);
+      if (!currentKeepRange) {
+        const nextKeepRange = keepRanges.find((range) => range.start > t);
+        if (nextKeepRange) {
+          v.currentTime = nextKeepRange.start;
+        } else {
+          v.pause();
+        }
       }
     };
     const id = window.setInterval(tick, 80);
     return () => window.clearInterval(id);
-  }, [previewMode, tokens]);
+  }, [keepRanges, playing, previewMode]);
 
   // Auto-scroll active token into view
   const activeId = useMemo(() => {
@@ -117,7 +124,17 @@ export function TranscriptEditor({
   function togglePlay() {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) v.play();
+    if (v.paused) {
+      if (previewMode) {
+        const t = v.currentTime;
+        const currentKeepRange = keepRanges.find((range) => t >= range.start && t < range.end);
+        if (!currentKeepRange) {
+          const nextKeepRange = keepRanges.find((range) => range.start > t) ?? keepRanges[0];
+          if (nextKeepRange) v.currentTime = nextKeepRange.start;
+        }
+      }
+      v.play();
+    }
     else v.pause();
   }
 
@@ -145,10 +162,12 @@ export function TranscriptEditor({
         <div className="surface-card overflow-hidden">
           <div className="relative bg-black aspect-video">
             <video
+              key={videoUrl}
               ref={videoRef}
               src={videoUrl}
-              className="h-full w-full"
+              className="block h-full w-full object-contain"
               onClick={togglePlay}
+              preload="auto"
               playsInline
             />
           </div>

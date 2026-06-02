@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Cpu, Lock, Scissors, ShieldCheck, Zap } from "lucide-react";
 import { FileDrop } from "@/components/FileDrop";
 import { StageProgress } from "@/components/StageProgress";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { TranscriptEditor } from "@/components/TranscriptEditor";
-import { extractAudio16kMono, cutAndConcat, getFFmpeg } from "@/lib/ffmpeg";
+import { extractAudio16kMono, cutAndConcat, createPreviewVideo, getFFmpeg } from "@/lib/ffmpeg";
 import { loadModel, transcribe, loadWhisper, type Segment, type TranscriptionMode } from "@/lib/whisper";
 import { segmentsToTokens, tokensToKeepRanges, type Token } from "@/lib/transcript";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ type Stage =
   | { kind: "loading-engine"; detail: string }
   | { kind: "loading-model"; progress: number; detail: string }
   | { kind: "extracting-audio"; progress: number }
+  | { kind: "creating-preview"; progress: number }
   | { kind: "transcribing"; detail: string }
   | { kind: "ready" };
 
@@ -86,6 +87,19 @@ export default function Index() {
       );
       setDuration(dur);
 
+      setStage({ kind: "creating-preview", progress: 0 });
+      try {
+        const previewBlob = await createPreviewVideo(f, (p) =>
+          setStage({ kind: "creating-preview", progress: p }),
+        );
+        const previewUrl = URL.createObjectURL(previewBlob);
+        if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = previewUrl;
+        setVideoUrl(previewUrl);
+      } catch (previewErr) {
+        console.warn("Preview transcode failed, falling back to original video.", previewErr);
+      }
+
       setStage({ kind: "transcribing", detail: "Listening to your video…" });
       const segments: Segment[] = await transcribe({
         audio: pcm,
@@ -149,9 +163,11 @@ export default function Index() {
       <Header />
 
       <div className="container max-w-7xl flex-1 py-6 md:py-10">
-        {stage.kind === "idle" && !file && <Hero onFile={handleFile} />}
         {stage.kind === "idle" && !file && (
-          <TranscriptionModePicker mode={transcriptionMode} onModeChange={setTranscriptionMode} />
+          <Hero
+            onFile={handleFile}
+            modePicker={<TranscriptionModePicker mode={transcriptionMode} onModeChange={setTranscriptionMode} />}
+          />
         )}
 
         {stage.kind !== "idle" && stage.kind !== "ready" && (
@@ -193,7 +209,7 @@ function TranscriptionModePicker({
   onModeChange: (mode: TranscriptionMode) => void;
 }) {
   return (
-    <div className="mx-auto mb-6 flex w-full max-w-2xl flex-col gap-3 rounded-[24px] border border-border/70 bg-panel/75 p-4 shadow-[var(--shadow-elev)] backdrop-blur-xl md:flex-row md:items-center md:justify-between">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-3 rounded-[24px] border border-border/70 bg-panel/75 p-4 shadow-[var(--shadow-elev)] backdrop-blur-xl md:flex-row md:items-center md:justify-between">
       <div className="space-y-1">
         <p className="text-sm font-semibold text-foreground">Transcription mode</p>
         <p className="text-sm text-muted-foreground">
@@ -253,7 +269,7 @@ function Header() {
   );
 }
 
-function Hero({ onFile }: { onFile: (f: File) => void }) {
+function Hero({ onFile, modePicker }: { onFile: (f: File) => void; modePicker: ReactNode }) {
   return (
     <div className="grid gap-12 py-8 md:gap-16 md:py-16">
       <motion.div
@@ -276,29 +292,11 @@ function Hero({ onFile }: { onFile: (f: File) => void }) {
             <br />
             Delete words, the cuts follow.
           </h2>
-          <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:text-lg">
-            A professional in-browser workflow for transcript-based editing. Upload a clip, transcribe it locally with whisper.cpp, remove spoken lines with a click, and export a clean final cut with ffmpeg.wasm.
-          </p>
-        </div>
-
-        <div className="mx-auto flex max-w-3xl flex-col gap-3 rounded-[28px] border border-border/70 bg-panel/80 p-4 shadow-[var(--shadow-elev)] backdrop-blur-xl md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-3 text-left">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-accent">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">Private, local, production-ready feel</p>
-              <p className="text-sm text-muted-foreground">Three-stage pipeline: load engines, transcribe accurately, export polished cuts.</p>
-            </div>
-          </div>
-          <div className="inline-flex items-center gap-2 self-start rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground md:self-auto">
-            Built for speed
-            <ArrowRight className="h-4 w-4" />
-          </div>
         </div>
       </motion.div>
 
-      <div className="mx-auto w-full max-w-2xl">
+      <div className="mx-auto w-full max-w-2xl space-y-4">
+        {modePicker}
         <FileDrop onFile={onFile} />
       </div>
 
@@ -357,6 +355,8 @@ function ProcessingPanel({
         return { label: "Downloading model", detail: stage.detail, progress: stage.progress };
       case "extracting-audio":
         return { label: "Extracting audio", detail: "ffmpeg -> 16kHz mono PCM", progress: stage.progress };
+      case "creating-preview":
+        return { label: "Preparing preview", detail: "Creating a browser-friendly MP4 preview", progress: stage.progress };
       case "transcribing":
         return { label: "Transcribing", detail: stage.detail, progress: undefined };
     }
@@ -395,7 +395,6 @@ function Footer() {
     <footer className="mt-auto border-t border-border/60">
       <div className="container max-w-7xl flex items-center justify-between py-5 text-xs text-muted-foreground">
         <p>© Speakcut · Built with whisper.cpp & ffmpeg.wasm</p>
-        <p className="font-mono">No data leaves your browser.</p>
       </div>
     </footer>
   );

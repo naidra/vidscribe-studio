@@ -17,7 +17,7 @@ export type TranscribeOptions = {
 };
 
 type PendingRequest = {
-  resolve: (value: any) => void;
+  resolve: (value: unknown) => void;
   reject: (reason?: unknown) => void;
   onModelProgress?: (loaded: number, total: number) => void;
   onProgressLine?: (line: string) => void;
@@ -26,7 +26,7 @@ type PendingRequest = {
 type WorkerSuccessMessage = {
   id: number;
   type: "success";
-  payload?: any;
+  payload?: unknown;
 };
 
 type WorkerErrorMessage = {
@@ -61,7 +61,7 @@ const pending = new Map<number, PendingRequest>();
 function getWorker(): Worker {
   if (worker) return worker;
 
-  worker = new Worker("/whisper-worker.js");
+  worker = new Worker(new URL("whisper-worker.js", window.location.origin + import.meta.env.BASE_URL));
   worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
     const msg = event.data;
     const request = pending.get(msg.id);
@@ -109,7 +109,7 @@ function callWorker<T>(
   const instance = getWorker();
 
   return new Promise<T>((resolve, reject) => {
-    pending.set(id, { resolve, reject, ...hooks });
+    pending.set(id, { resolve: resolve as (value: unknown) => void, reject, ...hooks });
     instance.postMessage({ id, type, ...payload }, transfer);
   });
 }

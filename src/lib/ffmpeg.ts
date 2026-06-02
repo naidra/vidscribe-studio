@@ -69,6 +69,60 @@ export async function extractAudio16kMono(
   return { pcm, duration };
 }
 
+/**
+ * Create a browser-friendly MP4 used only for the in-app preview player.
+ * The exported edit still uses the original source file.
+ */
+export async function createPreviewVideo(
+  file: File,
+  onProgress?: (pct: number) => void,
+): Promise<Blob> {
+  const ff = await getFFmpeg();
+  const inputName = `preview_src_${Date.now()}_${sanitize(file.name)}`;
+  const outputName = `preview_${Date.now()}.mp4`;
+
+  const progressHandler = ({ progress }: { progress: number }) => {
+    if (onProgress) onProgress(Math.max(0, Math.min(1, progress)));
+  };
+  ff.on("progress", progressHandler);
+
+  try {
+    await ff.writeFile(inputName, await fetchFile(file));
+    await ff.exec([
+      "-i", inputName,
+      "-map", "0:v:0",
+      "-map", "0:a:0?",
+      "-vf", "scale=w='min(1280,trunc(iw/2)*2)':h=-2",
+      "-c:v", "libx264",
+      "-preset", "ultrafast",
+      "-crf", "28",
+      "-pix_fmt", "yuv420p",
+      "-c:a", "aac",
+      "-b:a", "128k",
+      "-movflags", "+faststart",
+      outputName,
+    ]);
+
+    const data = await ff.readFile(outputName);
+    const u8 = data as Uint8Array;
+    const buf = new Uint8Array(u8.byteLength);
+    buf.set(u8);
+    return new Blob([buf], { type: "video/mp4" });
+  } finally {
+    try {
+      await ff.deleteFile(inputName);
+    } catch {
+      // ignore cleanup errors
+    }
+    try {
+      await ff.deleteFile(outputName);
+    } catch {
+      // ignore cleanup errors
+    }
+    ff.off("progress", progressHandler);
+  }
+}
+
 export type KeepRange = { start: number; end: number };
 
 /**
