@@ -16,10 +16,11 @@ export async function getFFmpeg(onLog?: (msg: string) => void): Promise<FFmpeg> 
     // bypass Vite's dep-pre-bundling of the package's internal worker.js (which
     // 404s as /node_modules/.vite/deps/worker.js in dev).
     const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const baseUrl = `${origin}${import.meta.env.BASE_URL}`;
     await inst.load({
-      coreURL: `${origin}/wasm/ffmpeg/ffmpeg-core.js`,
-      wasmURL: `${origin}/wasm/ffmpeg/ffmpeg-core.wasm`,
-      classWorkerURL: `${origin}/wasm/ffmpeg/worker.js`,
+      coreURL: new URL("wasm/ffmpeg/ffmpeg-core.js", baseUrl).href,
+      wasmURL: new URL("wasm/ffmpeg/ffmpeg-core.wasm", baseUrl).href,
+      classWorkerURL: new URL("wasm/ffmpeg/worker.js", baseUrl).href,
     });
     ffmpeg = inst;
     return inst;

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Libre+Baskerville:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -64,62 +64,6 @@
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
-  .dark {
-    --background: 220 42% 9%;
-    --foreground: 210 40% 96%;
-
-    --card: 220 38% 12%;
-    --card-foreground: 210 40% 96%;
-
-    --popover: 220 38% 12%;
-    --popover-foreground: 210 40% 96%;
-
-    --primary: 207 100% 62%;
-    --primary-foreground: 220 42% 9%;
-
-    --secondary: 217 33% 18%;
-    --secondary-foreground: 210 40% 96%;
-
-    --muted: 218 32% 16%;
-    --muted-foreground: 213 18% 68%;
-
-    --accent: 194 95% 60%;
-    --accent-foreground: 220 42% 9%;
-    --sky: 194 95% 60%;
-    --navy: 217 78% 67%;
-    --royal: 221 90% 72%;
-
-    --destructive: 0 72% 55%;
-    --destructive-foreground: 210 40% 96%;
-
-    --border: 217 26% 22%;
-    --input: 217 26% 20%;
-    --ring: 194 95% 60%;
-
-    --panel: 220 37% 13%;
-    --surface-elevated: 220 38% 12%;
-    --surface-overlay: 219 36% 15%;
-    --accent-soft: 215 51% 20%;
-
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-
-    --gradient-aurora:
-      radial-gradient(45% 55% at 18% 0%, hsl(var(--sky) / 0.22), transparent 60%),
-      radial-gradient(40% 52% at 85% 12%, hsl(var(--royal) / 0.18), transparent 60%),
-      linear-gradient(180deg, hsl(220 42% 10%), hsl(220 39% 8%));
-    --gradient-accent: linear-gradient(135deg, hsl(var(--royal)), hsl(var(--accent)) 52%, hsl(var(--sky)));
-    --gradient-text: linear-gradient(180deg, hsl(210 40% 98%), hsl(213 45% 74%));
-    --shadow-elev: 0 24px 80px -34px hsl(210 100% 5% / 0.82), 0 1px 0 hsl(210 40% 98% / 0.04) inset;
-    --shadow-glow: 0 0 0 1px hsl(var(--accent) / 0.18), 0 20px 50px -18px hsl(var(--sky) / 0.35);
-  }
-
   * {
     @apply border-border;
   }
@@ -153,7 +97,7 @@
 }
 
 @layer components {
-  .font-serif { font-family: 'Instrument Serif', serif; font-weight: 400; }
+  .font-serif { font-family: 'Libre Baskerville', Georgia, serif; font-weight: 400; }
   .font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
 
   .text-gradient {

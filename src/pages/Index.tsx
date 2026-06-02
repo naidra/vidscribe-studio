@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { ArrowRight, Cpu, Lock, Scissors, ShieldCheck, Zap } from "lucide-react";
 import { FileDrop } from "@/components/FileDrop";
 import { StageProgress } from "@/components/StageProgress";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { TranscriptEditor } from "@/components/TranscriptEditor";
 import { extractAudio16kMono, cutAndConcat, getFFmpeg } from "@/lib/ffmpeg";
@@ -19,7 +18,7 @@ type Stage =
   | { kind: "transcribing"; detail: string }
   | { kind: "ready" };
 
-const MODEL_URL = "/models/ggml-tiny.en.bin";
+const MODEL_URL = `${import.meta.env.BASE_URL}models/ggml-tiny.en.bin`;
 
 export default function Index() {
   const [file, setFile] = useState<File | null>(null);
@@ -116,7 +115,7 @@ export default function Index() {
       toast.error(err instanceof Error ? err.message : "Something went wrong.");
       reset();
     }
-  }, [reset]);
+  }, [reset, transcriptionMode]);
 
   const handleExport = useCallback(async () => {
     if (!file) return;
@@ -248,7 +247,6 @@ function Header() {
               <Zap className="h-3 w-3" /> ffmpeg.wasm
             </span>
           </div>
-          <ThemeToggle />
         </div>
       </div>
     </header>

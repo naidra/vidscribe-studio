@@ -29,6 +29,7 @@ function crossOriginIsolationPlugin() {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  base: process.env.VITE_BASE_PATH ?? (mode === "production" ? "/vidscribe-studio/" : "/"),
   server: {
     host: "localhost",
     port: 8080,
