@@ -4,6 +4,8 @@ let contextIdx = null;
 let modelLoaded = false;
 let activeRequestId = null;
 
+const PUBLIC_BASE_URL = new URL("./", self.location.href).href;
+
 function postSuccess(id, payload) {
   self.postMessage({ id, type: "success", payload });
 }
@@ -30,10 +32,10 @@ async function loadWhisperRuntime() {
     self.Module = {
       print: (text) => postProgressLine(text),
       printErr: (text) => postProgressLine(text),
-      locateFile: (path) => `/wasm/whisper/${path}`,
+      locateFile: (path) => new URL(`wasm/whisper/${path}`, PUBLIC_BASE_URL).href,
     };
 
-    self.importScripts("/wasm/whisper/libmain.js");
+    self.importScripts(new URL("wasm/whisper/libmain.js", PUBLIC_BASE_URL).href);
 
     const mod = self.Module;
     if (!mod.calledRun) {
