@@ -102,7 +102,7 @@ export function TranscriptEditor({
     if (withRange && selectionStart != null) {
       const a = Math.min(selectionStart, id);
       const b = Math.max(selectionStart, id);
-      const target = !tokens.find((t) => t.id === selectionStart)?.deleted;
+      const target = tokens.find((t) => t.id === selectionStart)?.deleted ?? true;
       onChange(tokens.map((t) => (t.id >= a && t.id <= b ? { ...t, deleted: target } : t)));
       setSelectionStart(null);
       return;
@@ -320,6 +320,7 @@ export function TranscriptEditor({
                       activeId === tok.id ? "active" : "",
                     ].join(" ")}
                     onClick={(e) => {
+                      e.preventDefault();
                       if (e.shiftKey) toggleToken(tok.id, true);
                       else {
                         seek(tok.start);
